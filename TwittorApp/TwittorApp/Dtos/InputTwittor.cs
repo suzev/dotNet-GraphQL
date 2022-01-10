@@ -5,7 +5,7 @@ namespace TwittorApp.Dtos
     public record InputTwittor
     (
         int UserId,
-        string Post,
+        string? Post,
         DateTime? Created,
         DateTime? Updated        
     );
