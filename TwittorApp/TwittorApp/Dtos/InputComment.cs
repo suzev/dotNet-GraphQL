@@ -4,9 +4,9 @@ namespace TwittorApp.Dtos
 {
     public record InputComment
     (
-      int TwittorId,
       int UserId,
-      string Comment1,
+      int TwittorId,
+      string? Comment1,
       DateTime? Created,
       DateTime? Updated
     );

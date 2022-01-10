@@ -96,19 +96,30 @@ namespace TwittorApp.GraphQL
             return await Task.FromResult(ret);
         }
 
-        public async Task<InputCommentPayload> DeleteCommentAsync(
-            int id,
+        [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
+        public async Task<TransactionStatus> DeleteCommentAsync(
+            int commentId,
             InputComment input,
-            [Service] Kasus2DbContext context)
+            [Service] Kasus2DbContext context,
+            [Service] IOptions<KafkaSettings> kafkaSettings)
         {
-            var comment = context.Comments.Where(o => o.Id == id).FirstOrDefault();
+            var comment = context.Comments.Where(o => o.Id == commentId).FirstOrDefault();
             if (comment != null)
             {
                 context.Comments.Remove(comment);
                 await context.SaveChangesAsync();
             }
 
-            return new InputCommentPayload(comment);
+            var key = "Delete-Comment-" + DateTime.Now.ToString();
+            var val = JObject.FromObject(comment).ToString(Formatting.None);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "comment", key, val);
+            await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
+
+            var ret = new TransactionStatus(result, "");
+            if (!result)
+                ret = new TransactionStatus(result, "Failed to submit data");
+
+            return await Task.FromResult(ret);
         }
 
         [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
