@@ -35,7 +35,8 @@ namespace KafkaApp
             using (var consumer = new ConsumerBuilder<string, string>(ServerConfig).Build())
             {
                 Console.WriteLine("KafkaApp Connected");
-                var topics = new string[] { "comment", "profile", "role", "twittor", "user", "userRole" };
+                //var topics = new string[] { "comment", "profile", "role", "twittor", "user", "userRole" };
+                var topics = new string[] { "twittor-add", "comment-add", "twittor-delete", "user-update", "userRole-update", "userRole-add", "user-add" };
                 consumer.Subscribe(topics);
 
                 Console.WriteLine("Waiting messages....");
@@ -77,11 +78,6 @@ namespace KafkaApp
                             {
                                 UserRole userRole = JsonConvert.DeserializeObject<UserRole>(cr.Message.Value);
                                 dbcontext.UserRoles.Update(userRole);
-                            }
-                            if (cr.Topic == "role")
-                            {
-                                Role role = JsonConvert.DeserializeObject<Role>(cr.Message.Value);
-                                dbcontext.Roles.Add(role);
                             }
                             if (cr.Topic == "user-add")
                             {
