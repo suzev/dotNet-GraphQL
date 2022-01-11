@@ -253,19 +253,32 @@ namespace TwittorApp.GraphQL
 
         [Authorize(Roles = new[] { "ADMIN" })]
         public async Task<TransactionStatus> UpdateUserRoleAsync(
-            int id,
+            //int id,
             InputUserRole input,
             [Service] Kasus2DbContext context,
             [Service] IOptions<KafkaSettings> kafkaSettings)
         {
-            var userRole = context.UserRoles.Where(o => o.UserId == id).FirstOrDefault();
+            var user = context.Users.Where(o => o.Id == input.UserId).FirstOrDefault();
+            if (user == null) return await Task.FromResult(new TransactionStatus(false, "User not found"));
+
+            var role = context.Roles.Where(u => u.Id == input.RoleId).FirstOrDefault();
+            if (role == null) return await Task.FromResult(new TransactionStatus(false, "Role not found"));
+
+            var userRole = context.UserRoles.Where(userRole => userRole.UserId == input.UserId && userRole.RoleId == input.RoleId).FirstOrDefault();
             if (userRole != null)
             {
-                userRole.RoleId = input.RoleId;
+                return await Task.FromResult(new TransactionStatus(false, $"UserId {input.UserId} with RoleId {input.RoleId} already exist"));
             }
 
-            var key = "Lock-Unlock-User-" + DateTime.Now.ToString();
-            var val = JObject.FromObject(userRole).ToString(Formatting.None);
+            var newUserRole = new UserRole
+            {
+                //Id = userRole.Id,
+                UserId = user.Id,
+                RoleId = role.Id
+            };
+
+            var key = "Update-UserRole-" + DateTime.Now.ToString();
+            var val = JObject.FromObject(newUserRole).ToString(Formatting.None);
             var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "userRole-update", key, val);
             await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
 
