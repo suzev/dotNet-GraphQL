@@ -2,6 +2,7 @@
 {
     public record InputUserRole
     (
+        int? Id,
         int? UserId,
         int RoleId
     );
