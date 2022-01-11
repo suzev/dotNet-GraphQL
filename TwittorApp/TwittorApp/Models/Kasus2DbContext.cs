@@ -26,12 +26,12 @@ namespace TwittorApp.Models
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-          /*  if (!optionsBuilder.IsConfigured)
+            /*if (!optionsBuilder.IsConfigured)
             {
 #warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see http://go.microsoft.com/fwlink/?LinkId=723263.
                 optionsBuilder.UseSqlServer("Server=LAPTOP-9NEN6LM2\\SQLEXPRESS;Database=Kasus2Db;Trusted_Connection=True;");
             }
-          */
+            */
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -52,11 +52,10 @@ namespace TwittorApp.Models
 
                 entity.Property(e => e.Updated).HasColumnType("datetime");
 
-                entity.HasOne(d => d.Twittor)
+                entity.HasOne(d => d.User)
                     .WithMany(p => p.Comments)
-                    .HasForeignKey(d => d.TwittorId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK_Comment_Twittor");
+                    .HasForeignKey(d => d.UserId)
+                    .HasConstraintName("FK_Comment_User");
             });
 
             modelBuilder.Entity<Profile>(entity =>

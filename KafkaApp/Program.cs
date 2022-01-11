@@ -48,36 +48,47 @@ namespace KafkaApp
 
                         using (var dbcontext = new Kasus2DbContext())
                         {
-                            if (cr.Topic == "comment")
+                            if (cr.Topic == "twittor-add")
+                            {
+                                Twittor twittor = JsonConvert.DeserializeObject<Twittor>(cr.Message.Value);
+                                dbcontext.Twittors.Add(twittor);
+                            }
+                            if (cr.Topic == "comment-add")
                             {
                                 Comment comment = JsonConvert.DeserializeObject<Comment>(cr.Message.Value);
                                 dbcontext.Comments.Add(comment);
                             }
-                            if (cr.Topic == "profile")
+                            if (cr.Topic == "twittor-delete")
                             {
-                                Profile profile = JsonConvert.DeserializeObject<Profile>(cr.Message.Value);
-                                dbcontext.Profiles.Add(profile);
+                                Twittor twittor = JsonConvert.DeserializeObject<Twittor>(cr.Message.Value);
+                                dbcontext.Twittors.Remove(twittor);
+                            }
+                            if (cr.Topic == "user-update")
+                            {
+                                User user = JsonConvert.DeserializeObject<User>(cr.Message.Value);
+                                dbcontext.Users.Update(user);
+                            }
+                            if (cr.Topic == "userRole-add")
+                            {
+                                UserRole userRole = JsonConvert.DeserializeObject<UserRole>(cr.Message.Value);
+                                dbcontext.UserRoles.Add(userRole);
+                            }
+                            if (cr.Topic == "userRole-update")
+                            {
+                                UserRole userRole = JsonConvert.DeserializeObject<UserRole>(cr.Message.Value);
+                                dbcontext.UserRoles.Update(userRole);
                             }
                             if (cr.Topic == "role")
                             {
                                 Role role = JsonConvert.DeserializeObject<Role>(cr.Message.Value);
                                 dbcontext.Roles.Add(role);
                             }
-                            if (cr.Topic == "twittor")
-                            {
-                                Twittor twittor = JsonConvert.DeserializeObject<Twittor>(cr.Message.Value);
-                                dbcontext.Twittors.Add(twittor);
-                            }
-                            if (cr.Topic == "user")
+                            if (cr.Topic == "user-add")
                             {
                                 User user = JsonConvert.DeserializeObject<User>(cr.Message.Value);
                                 dbcontext.Users.Add(user);
                             }
-                            if (cr.Topic == "userRole")
-                            {
-                                UserRole userRole = JsonConvert.DeserializeObject<UserRole>(cr.Message.Value);
-                                dbcontext.UserRoles.Add(userRole);
-                            }
+                            
 
                             await dbcontext.SaveChangesAsync();
                             Console.WriteLine("Data was saved into database");

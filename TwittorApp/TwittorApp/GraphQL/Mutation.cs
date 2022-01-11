@@ -34,7 +34,7 @@ namespace TwittorApp.GraphQL
             };
             var key = "Add-Twit-" + DateTime.Now.ToString();
             var val = JObject.FromObject(twittor).ToString(Formatting.None);
-            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "twittor", key, val);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "twittor-add", key, val);
             await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
 
             var ret = new TransactionStatus(result, "");
@@ -45,11 +45,13 @@ namespace TwittorApp.GraphQL
         }
 
         [Authorize(Roles = new[] { "MEMBER" })]
-        public async Task<TransactionStatus> AddCommentAsync(
+        public async Task<TransactionStatus> AddCommentTwitAsync(
            InputComment input,
            [Service] Kasus2DbContext context,
            [Service] IOptions<KafkaSettings> kafkaSettings)
         {
+            var twit = context.Twittors.Where(o => o.Id == input.TwittorId).FirstOrDefault();
+            if (twit == null) return await Task.FromResult(new TransactionStatus(false, "Twit not found"));
             var comment = new Comment
             {
                 TwittorId = input.TwittorId,
@@ -61,7 +63,7 @@ namespace TwittorApp.GraphQL
 
             var key = "Add-Comment-" + DateTime.Now.ToString();
             var val = JObject.FromObject(comment).ToString(Formatting.None);
-            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "comment", key, val);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "comment-add", key, val);
             await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
 
             var ret = new TransactionStatus(result, "");
@@ -73,20 +75,16 @@ namespace TwittorApp.GraphQL
 
         [Authorize(Roles = new[] { "MEMBER" })]
         public async Task<TransactionStatus> DeleteTwitAsync(
-            int twittorId,
-            InputTwittor input,
+            InputTwittorDelete input,
             [Service] Kasus2DbContext context,
             [Service] IOptions<KafkaSettings> kafkaSettings)
         {
-            var twittor = context.Twittors.Where(o => o.Id == twittorId).FirstOrDefault();
-            if (twittor != null)
-            {
-                context.Twittors.Remove(twittor);
-                await context.SaveChangesAsync();
-            }
+            var twittor = context.Twittors.Where(o => o.Id == input.Id).FirstOrDefault();
+            if (twittor == null) return await Task.FromResult(new TransactionStatus(false, "Twit not found"));
+
             var key = "Delete-Twit-" + DateTime.Now.ToString();
             var val = JObject.FromObject(twittor).ToString(Formatting.None);
-            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "twittor", key, val);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "twittor-delete", key, val);
             await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
 
             var ret = new TransactionStatus(result, "");
@@ -96,7 +94,8 @@ namespace TwittorApp.GraphQL
             return await Task.FromResult(ret);
         }
 
-        [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
+//tidak perlu
+       /* [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
         public async Task<TransactionStatus> DeleteCommentAsync(
             int commentId,
             InputComment input,
@@ -104,15 +103,82 @@ namespace TwittorApp.GraphQL
             [Service] IOptions<KafkaSettings> kafkaSettings)
         {
             var comment = context.Comments.Where(o => o.Id == commentId).FirstOrDefault();
-            if (comment != null)
-            {
-                context.Comments.Remove(comment);
-                await context.SaveChangesAsync();
-            }
+            if (comment == null) return await Task.FromResult(new TransactionStatus(false, "Comment not found"));
 
             var key = "Delete-Comment-" + DateTime.Now.ToString();
             var val = JObject.FromObject(comment).ToString(Formatting.None);
-            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "comment", key, val);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "comment-delete", key, val);
+            await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
+
+            var ret = new TransactionStatus(result, "");
+            if (!result)
+                ret = new TransactionStatus(result, "Failed to submit data");
+
+            return await Task.FromResult(ret);
+        }
+       */
+
+        /*
+        [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
+        public async Task<TransactionStatus> UpdateUserAsync(
+            RegisterUser input,
+            [Service] Kasus2DbContext context,
+            [Service] IOptions<KafkaSettings> kafkaSettings)
+        {
+            var user = new User();
+            if(input.Id == null)
+            {
+
+                user = context.Users.Where(user => user.Id == Convert.ToInt32(userId)).SingleOrDefault();
+            }
+
+            var user = context.Users.Where(o => o.Id == id).FirstOrDefault();
+            if (user == null) return await Task.FromResult(new TransactionStatus(false, "User not found"));
+            var newUser = new User ()
+            {
+                userFind.FullName = input.FullName;
+                user.Email = input.Email;
+                user.Username = input.Username;
+                user.Updated = DateTime.Now;
+            }
+
+            var key = "Update-User-Profile-" + DateTime.Now.ToString();
+            var val = JObject.FromObject(user).ToString(Formatting.None);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "user-update", key, val);
+            await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
+
+            var ret = new TransactionStatus(result, "");
+            if (!result)
+                ret = new TransactionStatus(result, "Failed to submit data");
+
+            return await Task.FromResult(ret);
+        }
+        */
+
+        [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
+        public async Task<TransactionStatus> UpdateUserPasswordAsync(
+            int id,
+            InputUpdatePasswordUser input,
+            [Service] Kasus2DbContext context,
+            [Service] IOptions<KafkaSettings> kafkaSettings)
+        {
+            var user = context.Users.Where(o => o.Id == id).FirstOrDefault();
+            if (user == null) return await Task.FromResult(new TransactionStatus(false, "User not found"));
+
+            if (user != null)
+            {
+                var valid = BCrypt.Net.BCrypt.Verify(input.oldPassword, user.Password);
+                if (valid)
+                {
+                    user.Password = BCrypt.Net.BCrypt.HashPassword(input.newPassword);
+                    user.Updated = DateTime.Now;
+                }
+                else return new TransactionStatus(false, "Invalid password");
+            }
+
+            var key = "Update-User-Password-" + DateTime.Now.ToString();
+            var val = JObject.FromObject(user).ToString(Formatting.None);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "user-update", key, val);
             await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
 
             var ret = new TransactionStatus(result, "");
@@ -122,137 +188,37 @@ namespace TwittorApp.GraphQL
             return await Task.FromResult(ret);
         }
 
-        [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
-        public async Task<InputUserPayload> UpdateUserAsync(
-            int id,
-            InputUser input,
-            [Service] Kasus2DbContext context)
-        {
-            var user = context.Users.Where(o => o.Id == id).FirstOrDefault();
-            if (user != null)
-            {
-                user.FullName = input.FullName;
-                user.Email = input.Email;
-                user.Username = input.Username;
-                user.Updated = DateTime.Now;
-
-                await context.SaveChangesAsync();
-            }
-
-            return new InputUserPayload(user);
-        }
-
-        [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
-        public async Task<InputUserPayload> UpdateUserPasswordAsync(
-            int id,
-            InputUser input,
-            [Service] Kasus2DbContext context)
-        {
-            var user = context.Users.Where(o => o.Id == id).FirstOrDefault();
-            if (user != null)
-            {
-                user.Password = BCrypt.Net.BCrypt.HashPassword(input.Password);
-                user.Updated = DateTime.Now;
-
-                await context.SaveChangesAsync();
-            }
-
-            return new InputUserPayload(user);
-        }
-
         [Authorize(Roles = new[] { "ADMIN" })]
-        public async Task<InputUserPayload> LockUserAsync(
+        public async Task<TransactionStatus> LockUserAsync(
             int id,
             InputUser input,
-            [Service] Kasus2DbContext context)
+            [Service] Kasus2DbContext context,
+            [Service] IOptions<KafkaSettings> kafkaSettings)
         {
             var user = context.Users.Where(o => o.Id == id).FirstOrDefault();
             if (user != null)
             {
                 user.IsLocked = input.IsLocked;
                 user.Updated = DateTime.Now;
-
-                await context.SaveChangesAsync();
             }
 
-            return new InputUserPayload(user);
+            var key = "Lock-Unlock-User-" + DateTime.Now.ToString();
+            var val = JObject.FromObject(user).ToString(Formatting.None);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "user-update", key, val);
+            await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
+
+            var ret = new TransactionStatus(result, "");
+            if (!result)
+                ret = new TransactionStatus(result, "Failed to submit data");
+
+            return await Task.FromResult(ret);
         }
 
         [Authorize(Roles = new[] { "ADMIN" })]
-        public async Task<InputUserRolePayload> UpdateUserRoleAsync(
-            int id,
-            InputUserRole input,
-            [Service] Kasus2DbContext context)
-        {
-            var userRole = context.UserRoles.Where(o => o.UserId == id).FirstOrDefault();
-            if (userRole != null)
-            {
-                userRole.RoleId = input.RoleId;
-
-                await context.SaveChangesAsync();
-            }
-
-            return new InputUserRolePayload(userRole);
-        }
-
-        public async Task<UserData> RegisterUserAsync(
-            RegisterUser input,
-            [Service] Kasus2DbContext context)
-        {
-            var user = context.Users.Where(o => o.Username == input.UserName).FirstOrDefault();
-            if (user != null)
-            {
-                return await Task.FromResult(new UserData());
-            }
-            var newUser = new User
-            {
-                FullName = input.FullName,
-                Email = input.Email,
-                Username = input.UserName,
-                Password = BCrypt.Net.BCrypt.HashPassword(input.Password),
-                Created = DateTime.Now,
-                Updated = DateTime.Now,
-                //IsLocked = true
-            };
-  
-            var ret = context.Users.Add(newUser);
-            await context.SaveChangesAsync();
-
-            return await Task.FromResult(new UserData
-            {
-                Id = newUser.Id,
-                Username = newUser.Username,
-                Email = newUser.Email,
-                FullName = newUser.FullName
-            });
-        }
-
-        /* public async Task<ConfirmUserPayload> ConfirmUserAndAddRoleAsync(
-             int id,
-             [Service] Kasus2DbContext context)
-         {
-             var userConfirm = context.Users.Where(u => u.Id == id).FirstOrDefault();
-             if (userConfirm != null)
-             {
-                 userConfirm.IsLocked = false;
-                 await context.SaveChangesAsync();
-             }
-             var userRole = context.UserRoles.Where(o => o.UserId == id).FirstOrDefault();
-             if (userRole != null)
-             {
-                 userRole.RoleId = 1;
-                 await context.SaveChangesAsync();
-             }
-             await context.SaveChangesAsync();
-
-             return new ConfirmUserPayload(userConfirm);
-         }
-        */
-        [Authorize(Roles = new[] { "ADMIN" })]
-        public async Task<InputUserRolePayload> AddUserRoleAsync(
+        public async Task<TransactionStatus> AddUserRoleAsync(
            InputUserRole input,
-           
-           [Service] Kasus2DbContext context)
+           [Service] Kasus2DbContext context,
+           [Service] IOptions<KafkaSettings> kafkaSettings)
         {
             var userRole = new UserRole
             {
@@ -263,8 +229,78 @@ namespace TwittorApp.GraphQL
             context.UserRoles.Add(userRole);
             await context.SaveChangesAsync();
 
-            return new InputUserRolePayload(userRole);
+            var key = "Add-UserRole-" + DateTime.Now.ToString();
+            var val = JObject.FromObject(userRole).ToString(Formatting.None);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "userRole-add", key, val);
+            await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
+
+            var ret = new TransactionStatus(result, "");
+            if (!result)
+                ret = new TransactionStatus(result, "Failed to submit data");
+
+            return await Task.FromResult(ret);
         }
+
+        [Authorize(Roles = new[] { "ADMIN" })]
+        public async Task<TransactionStatus> UpdateUserRoleAsync(
+            int id,
+            InputUserRole input,
+            [Service] Kasus2DbContext context,
+            [Service] IOptions<KafkaSettings> kafkaSettings)
+        {
+            var userRole = context.UserRoles.Where(o => o.UserId == id).FirstOrDefault();
+            if (userRole != null)
+            {
+                userRole.RoleId = input.RoleId;
+            }
+
+            var key = "Lock-Unlock-User-" + DateTime.Now.ToString();
+            var val = JObject.FromObject(userRole).ToString(Formatting.None);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "userRole-update", key, val);
+            await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
+
+            var ret = new TransactionStatus(result, "");
+            if (!result)
+                ret = new TransactionStatus(result, "Failed to submit data");
+
+            return await Task.FromResult(ret);
+        }
+
+        public async Task<TransactionStatus> RegisterUserAsync(
+            RegisterUser input,
+            [Service] Kasus2DbContext context,
+            [Service] IOptions<KafkaSettings> kafkaSettings)
+        {
+            var user = context.Users.Where(o => o.Username == input.UserName).FirstOrDefault();
+            if (user != null)
+            {
+                return await Task.FromResult(new TransactionStatus(false, "Username Registered, try with another username"));
+            }
+            var newUser = new User
+            {
+                FullName = input.FullName,
+                Email = input.Email,
+                Username = input.UserName,
+                Password = BCrypt.Net.BCrypt.HashPassword(input.Password),
+                Created = DateTime.Now,
+                Updated = DateTime.Now,
+                IsLocked = false
+            };
+
+            var key = "New-User-Add-" + DateTime.Now.ToString();
+            var val = JObject.FromObject(newUser).ToString(Formatting.None);
+            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "user-add", key, val);
+            await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
+
+            var ret = new TransactionStatus(result, "");
+            if (!result)
+                ret = new TransactionStatus(result, "Failed to submit data");
+
+            return await Task.FromResult(ret);
+        }
+
+       
+        
 
         public async Task<UserToken> LoginAsync(
             LoginUser input,

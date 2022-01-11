@@ -9,6 +9,7 @@ namespace TwittorApp.Models
     {
         public User()
         {
+            Comments = new HashSet<Comment>();
             Profiles = new HashSet<Profile>();
             Twittors = new HashSet<Twittor>();
             UserRoles = new HashSet<UserRole>();
@@ -23,6 +24,7 @@ namespace TwittorApp.Models
         public DateTime Updated { get; set; }
         public bool IsLocked { get; set; }
 
+        public virtual ICollection<Comment> Comments { get; set; }
         public virtual ICollection<Profile> Profiles { get; set; }
         public virtual ICollection<Twittor> Twittors { get; set; }
         public virtual ICollection<UserRole> UserRoles { get; set; }

@@ -58,11 +58,10 @@ namespace KafkaApp.Models
 
                 entity.Property(e => e.Updated).HasColumnType("datetime");
 
-                entity.HasOne(d => d.Twittor)
+                entity.HasOne(d => d.User)
                     .WithMany(p => p.Comments)
-                    .HasForeignKey(d => d.TwittorId)
-                    .OnDelete(DeleteBehavior.ClientSetNull)
-                    .HasConstraintName("FK_Comment_Twittor");
+                    .HasForeignKey(d => d.UserId)
+                    .HasConstraintName("FK_Comment_User");
             });
 
             modelBuilder.Entity<Profile>(entity =>

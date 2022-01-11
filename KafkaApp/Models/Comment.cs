@@ -14,6 +14,6 @@ namespace KafkaApp.Models
         public DateTime Created { get; set; }
         public DateTime Updated { get; set; }
 
-        public virtual Twittor Twittor { get; set; }
+        public virtual User User { get; set; }
     }
 }
