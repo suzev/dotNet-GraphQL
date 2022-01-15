@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using System;
 using System.Text;
 using TwittorApp.GraphQL;
 using TwittorApp.Models;
@@ -15,19 +16,32 @@ namespace TwittorApp
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        public Startup(IConfiguration configuration, IWebHostEnvironment env)
         {
             Configuration = configuration;
+            _env = env;
         }
 
         public IConfiguration Configuration { get; }
 
+        private readonly IWebHostEnvironment _env;
+
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<Kasus2DbContext>(opt => opt.UseSqlServer(
-                    Configuration.GetConnectionString("LocalConn")
-                ));
+            if (_env.IsProduction())
+            {
+                Console.WriteLine("==>Using Azure SQL Server DB");
+                services.AddDbContext<Kasus2DbContext>(options =>
+                    options.UseSqlServer(Configuration.GetConnectionString("ProdConnection")));
+            }
+
+            else
+            {
+                services.AddDbContext<Kasus2DbContext>(options =>
+                    options.UseSqlServer(Configuration.GetConnectionString("LocalConn")));
+            }
+
             services
                 .AddGraphQLServer()
                 .AddQueryType<Query>()
