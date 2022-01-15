@@ -94,52 +94,23 @@ namespace TwittorApp.GraphQL
             return await Task.FromResult(ret);
         }
 
-//tidak perlu
-       /* [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
-        public async Task<TransactionStatus> DeleteCommentAsync(
-            int commentId,
-            InputComment input,
-            [Service] Kasus2DbContext context,
-            [Service] IOptions<KafkaSettings> kafkaSettings)
-        {
-            var comment = context.Comments.Where(o => o.Id == commentId).FirstOrDefault();
-            if (comment == null) return await Task.FromResult(new TransactionStatus(false, "Comment not found"));
-
-            var key = "Delete-Comment-" + DateTime.Now.ToString();
-            var val = JObject.FromObject(comment).ToString(Formatting.None);
-            var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "comment-delete", key, val);
-            await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
-
-            var ret = new TransactionStatus(result, "");
-            if (!result)
-                ret = new TransactionStatus(result, "Failed to submit data");
-
-            return await Task.FromResult(ret);
-        }
-       */
-
-        /*
         [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
         public async Task<TransactionStatus> UpdateUserAsync(
+            int id,
             RegisterUser input,
             [Service] Kasus2DbContext context,
             [Service] IOptions<KafkaSettings> kafkaSettings)
         {
-            var user = new User();
-            if(input.Id == null)
-            {
-
-                user = context.Users.Where(user => user.Id == Convert.ToInt32(userId)).SingleOrDefault();
-            }
-
             var user = context.Users.Where(o => o.Id == id).FirstOrDefault();
             if (user == null) return await Task.FromResult(new TransactionStatus(false, "User not found"));
-            var newUser = new User ()
+
+            if (user != null)
             {
-                userFind.FullName = input.FullName;
+                user.FullName = input.FullName;
                 user.Email = input.Email;
-                user.Username = input.Username;
+                user.Username = input.UserName;
                 user.Updated = DateTime.Now;
+                user.IsLocked = false;
             }
 
             var key = "Update-User-Profile-" + DateTime.Now.ToString();
@@ -153,7 +124,6 @@ namespace TwittorApp.GraphQL
 
             return await Task.FromResult(ret);
         }
-        */
 
         [Authorize(Roles = new[] { "MEMBER", "ADMIN" })]
         public async Task<TransactionStatus> UpdateUserPasswordAsync(
