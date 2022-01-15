@@ -3,6 +3,7 @@
     public record LoginUser
     (
         string Username,
-        string Password
+        string Password,
+        bool? isLock
     );
 }

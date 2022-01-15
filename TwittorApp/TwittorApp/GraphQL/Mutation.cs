@@ -223,7 +223,7 @@ namespace TwittorApp.GraphQL
 
         [Authorize(Roles = new[] { "ADMIN" })]
         public async Task<TransactionStatus> UpdateUserRoleAsync(
-            //int id,
+            int id,
             InputUserRole input,
             [Service] Kasus2DbContext context,
             [Service] IOptions<KafkaSettings> kafkaSettings)
@@ -234,21 +234,32 @@ namespace TwittorApp.GraphQL
             var role = context.Roles.Where(u => u.Id == input.RoleId).FirstOrDefault();
             if (role == null) return await Task.FromResult(new TransactionStatus(false, "Role not found"));
 
+            var userRole1 = context.UserRoles.Where(b => b.Id == input.Id).FirstOrDefault();
+            if (userRole1 != null)
+            {
+                userRole1.RoleId = input.RoleId;
+                userRole1.UserId = (int)input.UserId;
+            }
+
+/*
             var userRole = context.UserRoles.Where(userRole => userRole.UserId == input.UserId && userRole.RoleId == input.RoleId).FirstOrDefault();
             if (userRole != null)
             {
-                return await Task.FromResult(new TransactionStatus(false, $"UserId {input.UserId} with RoleId {input.RoleId} already exist"));
+                userRole.RoleId = input.RoleId;
+                userRole.UserId = (int)input.UserId;   
             }
+/*
 
+/*
             var newUserRole = new UserRole
             {
                 //Id = userRole.Id,
                 UserId = user.Id,
                 RoleId = role.Id
             };
-
+*/
             var key = "Update-UserRole-" + DateTime.Now.ToString();
-            var val = JObject.FromObject(newUserRole).ToString(Formatting.None);
+            var val = JObject.FromObject(userRole1).ToString(Formatting.None);
             var result = await KafkaHelper.SendMessage(kafkaSettings.Value, "userRole-update", key, val);
             await KafkaHelper.SendMessage(kafkaSettings.Value, "logging", key, val);
 
@@ -300,11 +311,26 @@ namespace TwittorApp.GraphQL
             [Service] IOptions<TokenSettings> tokenSettings,
             [Service] Kasus2DbContext context)
         {
+            
             var user = context.Users.Where(o => o.Username == input.Username).FirstOrDefault();
+            if (user != null)
+            {
+                if (user.IsLocked.Equals(true))
+                    return await Task.FromResult(new UserToken(null, null, "Username locked"));
+            }
+            
             if (user == null)
             {
-                return await Task.FromResult(new UserToken(null, null, "Username or password was invalid"));
+                return await Task.FromResult(new UserToken(null, null, "Username or password was invalid or locked"));
             }
+
+            /*
+            var user1= context.Users.Where(p => p.IsLocked.Equals(true)).FirstOrDefault();
+            if (user1.Equals(true))
+            {
+                return await Task.FromResult(new UserToken(null, null, "Username locked"));
+            }
+            */
             bool valid = BCrypt.Net.BCrypt.Verify(input.Password, user.Password);
             if (valid)
             {
